@@ -1,0 +1,157 @@
+﻿@page "/editar-autor/{Id:int}"
+@using Application.DTOs
+@using Application.Common
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">Editar Datos del Autor</h3>
+            <span class="badge bg-light text-primary">ID: @Id</span>
+        </div>
+        <div class="card-body p-4">
+            @if (autor == null && !haFallado)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted mt-2">Cargando información del autor...</p>
+                </div>
+            }
+            else if (haFallado)
+            {
+                <div class="alert alert-warning border-0 shadow-sm">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    No se encontró el autor o no se encuentra activo en el catálogo.
+                </div>
+                <button class="btn btn-outline-primary" @onclick="Volver">Regresar al Inicio</button>
+            }
+            else
+            {
+                <EditForm Model="@autor" OnValidSubmit="Actualizar">
+                    <DataAnnotationsValidator />
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Nombre Completo *</label>
+                            <InputText @bind-Value="autor.NombreCompleto" class="form-control" />
+                            <ValidationMessage For="@(() => autor.NombreCompleto)" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Correo Electrónico *</label>
+                            <InputText @bind-Value="autor.CorreoElectronico" class="form-control" />
+                            <ValidationMessage For="@(() => autor.CorreoElectronico)" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Fecha de Nacimiento *</label>
+                            <InputDate @bind-Value="autor.FechaNacimiento" class="form-control" />
+                            <ValidationMessage For="@(() => autor.FechaNacimiento)" class="text-danger small" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Ciudad de Procedencia *</label>
+                            <InputText @bind-Value="autor.CiudadProcedencia" class="form-control" />
+                            <ValidationMessage For="@(() => autor.CiudadProcedencia)" class="text-danger small" />
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-4" disabled="@isProcessing">
+                            @if (isProcessing)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                            }
+                            Actualizar Datos
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary px-4" @onclick="Volver">Cancelar</button>
+                    </div>
+                </EditForm>
+            }
+
+            @if (!string.IsNullOrEmpty(mensajeStatus))
+            {
+                <div class="alert @claseMensaje mt-3 animate__animated animate__fadeIn">
+                    @mensajeStatus
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private AutorDto? autor;
+    private bool haFallado = false;
+    private bool isProcessing = false;
+    private string? mensajeStatus;
+    private string claseMensaje = "alert-info";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAutor();
+    }
+
+    private async Task CargarAutor()
+    {
+        try
+        {
+            var client = ClientFactory.CreateClient("LibreriaApi");
+            var response = await client.GetAsync($"api/autores/{Id}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                autor = await response.Content.ReadFromJsonAsync<AutorDto>();
+            }
+            else
+            {
+                haFallado = true;
+            }
+        }
+        catch (Exception)
+        {
+            haFallado = true;
+        }
+    }
+
+    private async Task Actualizar()
+    {
+        if (autor == null) return;
+        isProcessing = true;
+        mensajeStatus = "Guardando cambios...";
+        claseMensaje = "alert-info";
+
+        try
+        {
+            var client = ClientFactory.CreateClient("LibreriaApi");
+            // Usamos PUT para actualizar
+            var response = await client.PutAsJsonAsync("api/autores", autor);
+
+            if (response.IsSuccessStatusCode)
+            {
+                mensajeStatus = "El autor ha sido actualizado exitosamente.";
+                claseMensaje = "alert-success";
+                await Task.Delay(1500);
+                Volver();
+            }
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                mensajeStatus = error?.Message ?? "Error al actualizar el registro.";
+                claseMensaje = "alert-warning";
+            }
+        }
+        catch (Exception)
+        {
+            mensajeStatus = "Error de comunicación con el servidor.";
+            claseMensaje = "alert-danger";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void Volver() => Navigation.NavigateTo("/");
+}

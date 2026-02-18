@@ -1,0 +1,104 @@
+﻿@page "/registro-autor"
+@using Application.Common
+@using Application.DTOs
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+            <h3 class="mb-0">Registrar Nuevo Autor</h3>
+        </div>
+        <div class="card-body">
+            <EditForm Model="@nuevoAutor" OnValidSubmit="GuardarAutor">
+                <DataAnnotationsValidator />
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Nombre Completo *</label>
+                        <InputText @bind-Value="nuevoAutor.NombreCompleto" class="form-control" />
+                        <ValidationMessage For="@(() => nuevoAutor.NombreCompleto)" class="text-danger" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Correo Electrónico *</label>
+                        <InputText @bind-Value="nuevoAutor.CorreoElectronico" class="form-control" />
+                        <ValidationMessage For="@(() => nuevoAutor.CorreoElectronico)" class="text-danger" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Fecha de Nacimiento *</label>
+                        <InputDate @bind-Value="nuevoAutor.FechaNacimiento" class="form-control" />
+                        <ValidationMessage For="@(() => nuevoAutor.FechaNacimiento)" class="text-danger" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Ciudad de Procedencia *</label>
+                        <InputText @bind-Value="nuevoAutor.CiudadProcedencia" class="form-control" />
+                        <ValidationMessage For="@(() => nuevoAutor.CiudadProcedencia)" class="text-danger" />
+                    </div>
+                </div>
+
+                <div class="mt-4 border-top pt-3">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-save"></i> Guardar Autor
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary px-4" @onclick="Cancelar">
+                        Cancelar
+                    </button>
+                </div>
+            </EditForm>
+
+            @if (!string.IsNullOrEmpty(mensajeStatus))
+            {
+                <div class="alert @claseMensaje mt-3 animate__animated animate__fadeIn">
+                    @mensajeStatus
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private AutorDto nuevoAutor = new AutorDto { FechaNacimiento = DateTime.Now.AddYears(-30) };
+    private string? mensajeStatus;
+    private string claseMensaje = "alert-info";
+
+    private async Task GuardarAutor()
+    {
+        mensajeStatus = "Enviando datos al servidor...";
+        claseMensaje = "alert-info";
+
+        try
+        {
+            var client = ClientFactory.CreateClient("LibreriaApi");
+            var response = await client.PostAsJsonAsync("api/autores", nuevoAutor);
+
+            if (response.IsSuccessStatusCode)
+            {
+                mensajeStatus = "¡Éxito! El autor ha sido guardado correctamente.";
+                claseMensaje = "alert-success";
+                nuevoAutor = new AutorDto { FechaNacimiento = DateTime.Now.AddYears(-30) };
+            }
+            else
+            {
+                var errorData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                mensajeStatus = errorData?.Message ?? "No se pudo completar el registro.";
+
+                // Si es un error de validación (400) usamos warning, si es de servidor (500) usamos danger
+                claseMensaje = response.StatusCode == System.Net.HttpStatusCode.BadRequest
+                                ? "alert-warning"
+                                : "alert-danger";
+            }
+        }
+        catch (Exception)
+        {
+            mensajeStatus = "Error crítico: No hay conexión con el servicio de API.";
+            claseMensaje = "alert-danger";
+        }
+    }
+
+    private void Cancelar() => Navigation.NavigateTo("/");
+}

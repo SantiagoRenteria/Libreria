@@ -1,0 +1,149 @@
+﻿@page "/registro-libro"
+@using Application.Common
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Registrar Nuevo Libro</h3>
+        <button class="btn btn-outline-secondary btn-sm" @onclick="@(() => Navigation.NavigateTo("/autores-libros"))">
+            <i class="bi bi-arrow-left"></i> Volver al Catálogo
+        </button>
+    </div>
+    <hr />
+
+    @if (!string.IsNullOrEmpty(mensajeError))
+    {
+        <div class="alert alert-danger shadow-sm alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> @mensajeError
+            <button type="button" class="btn-close" @onclick="@(() => mensajeError = null)"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(mensajeExito))
+    {
+        <div class="alert alert-success shadow-sm alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> @mensajeExito
+            <button type="button" class="btn-close" @onclick="@(() => mensajeExito = null)"></button>
+        </div>
+    }
+
+    <EditForm Model="@nuevoLibro" OnValidSubmit="GuardarLibro" class="card p-4 shadow-sm border-0 bg-light">
+        <DataAnnotationsValidator />
+
+        <div class="row">
+            @* Fila 1: Título *@
+            <div class="col-md-12 mb-3">
+                <label class="form-label fw-bold">Título del Libro *</label>
+                <InputText @bind-Value="nuevoLibro.Titulo" class="form-control" placeholder="Ej: Cien años de soledad" />
+                <ValidationMessage For="@(() => nuevoLibro.Titulo)" class="text-danger small" />
+            </div>
+
+            @* Fila 2: Año y Género *@
+            <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Año de Publicación *</label>
+                <InputNumber @bind-Value="nuevoLibro.Anio" class="form-control" />
+                <ValidationMessage For="@(() => nuevoLibro.Anio)" class="text-danger small" />
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Género Literario *</label>
+                <InputText @bind-Value="nuevoLibro.Genero" class="form-control" placeholder="Ej: Novela, Realismo Mágico" />
+                <ValidationMessage For="@(() => nuevoLibro.Genero)" class="text-danger small" />
+            </div>
+
+            @* Fila 3: Páginas y Autor *@
+            <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Número de Páginas *</label>
+                <InputNumber @bind-Value="nuevoLibro.NumeroPaginas" class="form-control" />
+                <ValidationMessage For="@(() => nuevoLibro.NumeroPaginas)" class="text-danger small" />
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Autor *</label>
+                <InputSelect @bind-Value="nuevoLibro.AutorId" class="form-control">
+                    <option value="0">-- Seleccione el autor --</option>
+                    @foreach (var autor in autores)
+                    {
+                        <option value="@autor.Id">@autor.NombreCompleto</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => nuevoLibro.AutorId)" class="text-danger small" />
+            </div>
+        </div>
+
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+            <button type="submit" class="btn btn-primary px-4">
+                <i class="bi bi-save"></i> Guardar Libro
+            </button>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private LibroCreateDto nuevoLibro = new LibroCreateDto();
+    private List<AutorDto> autores = new List<AutorDto>();
+    private string? mensajeError;
+    private string? mensajeExito;
+    private bool cargandoAutores = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var client = ClientFactory.CreateClient("LibreriaApi");
+            // Usamos el resultado de tu nuevo AutorService refactorizado
+            var result = await client.GetFromJsonAsync<List<AutorDto>>("api/autores");
+            autores = result ?? new();
+        }
+        catch (Exception ex)
+        {
+            mensajeError = "No se pudieron cargar los autores. Verifique la conexión.";
+        }
+        finally
+        {
+            cargandoAutores = false;
+        }
+    }
+
+    private async Task GuardarLibro()
+    {
+        // Validación local rápida
+        if (nuevoLibro.AutorId == 0)
+        {
+            mensajeError = "Por favor, seleccione un autor de la lista.";
+            return;
+        }
+
+        mensajeError = null;
+        mensajeExito = null;
+
+        try
+        {
+            var client = ClientFactory.CreateClient("LibreriaApi");
+            var response = await client.PostAsJsonAsync("api/libros", nuevoLibro);
+
+            if (response.IsSuccessStatusCode)
+            {
+                mensajeExito = "¡Libro registrado exitosamente!";
+                nuevoLibro = new LibroCreateDto(); // Reset del formulario
+            }
+            else
+            {
+                // Aquí recibimos el ErrorResponse de nuestro BaseApiController
+                var errorData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                mensajeError = errorData?.Message ?? "Ocurrió un error inesperado.";
+
+                // Si el error es 404, quizás alguien borró al autor mientras el usuario llenaba el form
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    await OnInitializedAsync(); // Recargamos la lista de autores
+                }
+            }
+        }
+        catch (Exception)
+        {
+            mensajeError = "No hay comunicación con el servidor. Intente más tarde.";
+        }
+    }
+}
