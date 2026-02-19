@@ -185,7 +185,7 @@ En este desarrollo no solo tiramos código, aplicamos ingeniería de software re
 
 ---
 
-## 🧪 Pruebas Unitarias (Siguiente Fase)
+## 🧪 Pruebas Unitarias
 
 > [!IMPORTANT]
 > El sistema ha sido diseñado desde cero para ser 100% testeable. En la siguiente iteración se implementará:
