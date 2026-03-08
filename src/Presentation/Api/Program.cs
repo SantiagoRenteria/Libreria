@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Solo intentará conectarse a Key Vault si estamos en el entorno de Azure (Production)
+// Solo intentará conectarse a Key Vault si estamos en el entorno de Azure (Production).
 if (builder.Environment.IsProduction())
 {
     var keyVaultUri = builder.Configuration["KeyVaultUri"];
