@@ -19,18 +19,18 @@ jobs:
         dotnet-version: '8.0.x'
 
     - name: Restore Dependencies
-      run: dotnet restore SolucionBiblioteca.sln # Nombre según tu README
+      run: dotnet restore Libreria.sln 
 
     - name: Build
       run: dotnet build Libreria.sln --configuration Release --no-restore
 
     - name: Publish API
-      # Apuntamos a la carpeta Presentation/API según tu estructura
+      # Apuntamos a la carpeta Presentation/API 
       run: dotnet publish src/Presentation/Api/Api.csproj -c Release -o ./publish
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
-        app-name: 'app-libreria-api-prod' # El nombre que le pusiste a tu App Service
+        app-name: 'app-libreria-api-prod' 
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         package: ./publish
