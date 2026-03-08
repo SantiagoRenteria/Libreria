@@ -1,12 +1,25 @@
 using Api.Middlewares;
 using Application.Interfaces;
 using Application.Services;
+using Azure.Identity;
 using Domain.Interfaces;
 using Infrastructure.Persistence;
 using Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Solo intentará conectarse a Key Vault si estamos en el entorno de Azure (Production)
+if (builder.Environment.IsProduction())
+{
+    var keyVaultUri = builder.Configuration["KeyVaultUri"];
+    if (!string.IsNullOrEmpty(keyVaultUri))
+    {
+        builder.Configuration.AddAzureKeyVault(
+            new Uri(keyVaultUri),
+            new DefaultAzureCredential());
+    }
+}
 
 // 1. Configurar la Base de Datos (SQL Server LocalDB)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
