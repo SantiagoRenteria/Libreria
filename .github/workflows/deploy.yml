@@ -3,7 +3,7 @@ name: Deploy API Libreria
 on:
   push:
     branches:
-      - main  # Se dispara cuando subes cambios a la rama principal
+      - master  # Se dispara cuando subes cambios a la rama master.
 
 jobs:
   build-and-deploy:
