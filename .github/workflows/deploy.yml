@@ -22,11 +22,11 @@ jobs:
       run: dotnet restore SolucionBiblioteca.sln # Nombre según tu README
 
     - name: Build
-      run: dotnet build SolucionBiblioteca.sln --configuration Release --no-restore
+      run: dotnet build Libreria.sln --configuration Release --no-restore
 
     - name: Publish API
       # Apuntamos a la carpeta Presentation/API según tu estructura
-      run: dotnet publish src/Presentation/API/API.csproj -c Release -o ./publish
+      run: dotnet publish src/Presentation/Api/Api.csproj -c Release -o ./publish
 
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
