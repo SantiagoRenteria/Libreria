@@ -23,6 +23,10 @@ jobs:
 
     - name: Build
       run: dotnet build Libreria.sln --configuration Release --no-restore
+      
+      # 🚀 PASO DE TEST: Si falla un test, el despliegue se cancela automáticamente
+    - name: Run Unit Tests
+      run: dotnet test Libreria.sln --configuration Release --no-build --verbosity normal
 
     - name: Publish API
       # Apuntamos a la carpeta Presentation/API 

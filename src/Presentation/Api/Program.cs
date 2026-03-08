@@ -63,6 +63,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Libreria API v1");
+    c.RoutePrefix = string.Empty; // Esto hará que Swagger cargue en la raíz de la URL
+});
+
 app.UseHttpsRedirection();
 
 // 5. Aplicar la política de CORS
