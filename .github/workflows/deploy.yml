@@ -1,40 +1,54 @@
-name: Deploy API Libreria
+name: Docker CI/CD con Tests a Azure
 
 on:
   push:
     branches:
-      - master  # Se dispara cuando subes cambios a la rama master.
+      - master
 
 jobs:
-  build-and-deploy:
+  test-and-build:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    # 1. Configurar .NET para correr los tests fuera de Docker
     - name: Setup .NET 8
-      uses: actions/setup-dotnet@v4
+      uses: azure/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
 
     - name: Restore Dependencies
-      run: dotnet restore Libreria.sln 
+      run: dotnet restore Libreria.sln
 
-    - name: Build
-      run: dotnet build Libreria.sln --configuration Release --no-restore
-      
-      # 🚀 PASO DE TEST: Si falla un test, el despliegue se cancela automáticamente
-    - name: Run Unit Tests
-      run: dotnet test Libreria.sln --configuration Release --no-build --verbosity normal
+    # 2. EJECUCIÓN DE TESTS (Si esto falla, el proceso se detiene aquí)
+    - name: Run Unit & Integration Tests
+      run: |
+        dotnet test test/UnitTests/UnitTests.csproj --configuration Release --no-restore
+        dotnet test test/IntegrationTests/IntegrationTests.csproj --configuration Release --no-restore
 
-    - name: Publish API
-      # Apuntamos a la carpeta Presentation/API 
-      run: dotnet publish src/Presentation/Api/Api.csproj -c Release -o ./publish
+    # 3. Si los tests pasaron, procedemos con Docker
+    - name: Azure Container Registry Login
+      uses: azure/docker-login@v2
+      with:
+        login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
 
+    - name: Build and Push Docker Image
+      run: |
+        docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/libreria-api:${{ github.sha }} .
+        docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/libreria-api:latest .
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/libreria-api:${{ github.sha }}
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/libreria-api:latest
+
+  deploy:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    steps:
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v3
       with:
-        app-name: 'app-libreria-api-prod' 
+        app-name: 'app-libreria-api-prod'
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: ./publish
+        images: '${{ secrets.ACR_LOGIN_SERVER }}/libreria-api:latest'
