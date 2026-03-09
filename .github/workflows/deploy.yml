@@ -14,7 +14,7 @@ jobs:
 
     # 1. Configurar .NET para correr los tests fuera de Docker
     - name: Setup .NET 8
-      uses: azure/setup-dotnet@v4
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
 
